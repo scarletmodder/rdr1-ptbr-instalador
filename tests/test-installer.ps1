@@ -226,3 +226,5 @@ finally {
 
 if ($failures -gt 0) { Write-Host "$failures check(s) failed" -ForegroundColor Red; exit 1 }
 Write-Host 'All installer checks passed' -ForegroundColor Green
+# The last native command (a run expected to fail) would otherwise set the exit code of this script.
+exit 0
