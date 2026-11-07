@@ -14,7 +14,8 @@ Generic rules (they apply in CI):
 - `data-folder`: the Windows data folder written out in full. The variable
   `$env:LOCALAPPDATA` passes, because it is discovered at run time.
 - `email`: an e-mail that is not an example, a generic noreply, a git remote (`git@host`) or the
-  project's public noreply; the noreply of another GitHub account is found in file contents.
+  project's public noreply or its public contact address (the persona's own e-mail, published on purpose);
+  the noreply of another GitHub account is found in file contents.
   In author, committer, commit message and tag, the noreply of any GitHub account passes, so
   collaborators are not blocked, and the personal terms still apply to it. The domain
   must end in a letters-only TLD (`pkg@1.0rc` is not an e-mail).
@@ -73,7 +74,7 @@ RULES: dict[str, re.Pattern[str]] = {
     ),
     "data-folder": re.compile(r"(?<![A-Za-z])AppData(?![A-Za-z])", re.IGNORECASE),  # guard: ignore
     "email": re.compile(
-        r"(?<![\w.+-])(?!noreply@|no-reply@|git@|[\w.+-]*@(?:example|exemplo)\.|341213439\+scarletmodder@users\.noreply\.github\.com)"
+        r"(?<![\w.+-])(?!noreply@|no-reply@|git@|[\w.+-]*@(?:example|exemplo)\.|341213439\+scarletmodder@users\.noreply\.github\.com|scarletmodder\.vr@gmail\.com(?![\w.-]))"
         r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}(?![\w-])"
     ),
     "secret": re.compile(
