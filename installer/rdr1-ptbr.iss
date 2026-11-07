@@ -21,6 +21,9 @@
 #define StateKey "Software\Scarlet Modder\RDR1-PTBR"
 #define OriginalSha "D25A21C3C6C1D8FACBD97DC4BEE1DCD8CE0537159578FAB0D6FC227683F0E8BB"
 #define OriginalSize "3898789728"
+; Published dubs (1.0 and 0.7.1): with the original backed up, only these may be replaced by a new version.
+#define Dub10Sha "34C22357ACF55C75E9A43C6A9ED68DBD7F98C399E4E4A081EA2B7984AEE4577C"
+#define Dub071Sha "3E7172475204CDDA0CFB4F4FE93DBA88DC5EC743789DCC35A32B5B8E4E0A9C21"
 ; HDiffPatch: the newest release is looked up on GitHub; this one is the fallback and the tested one.
 #define HdpApi "https://api.github.com/repos/sisong/HDiffPatch/releases/latest"
 #define HdpTestedTag "v5.1.3"
@@ -848,7 +851,8 @@ var
   Pack, Data, Json, Url, Sha, ToolZip, Hpatchz, PatchFile, Game, Target, BackupDir, Backup, NewFile, Aside, State, Err, Other: String;
   OrigSize, DubSize, Free, Total: Int64;
   Code: Integer;
-  MovedNow: Boolean;
+  MovedNow, TargetMissing: Boolean;
+  Known: String;
 begin
   Result := '';
   Pack := Trim(PackEdit.Text);
@@ -933,6 +937,18 @@ begin
       Result := CustomMessage('ErrBackupOther');
       Exit;
     end;
+    { With the original safe, only a published dub (or nothing, after an interruption) may be replaced. }
+    if (State = 'other') and FileExists(Target) then
+    begin
+      if not RegQueryStringValue(HKA, '{#StateKey}', 'dublado_sha256', Known) then
+        Known := '';
+      Sha := FileSha256(Target);
+      if (Sha <> Uppercase(Known)) and (Sha <> '{#Dub10Sha}') and (Sha <> '{#Dub071Sha}') then
+      begin
+        Result := CustomMessage('ErrGameOther');
+        Exit;
+      end;
+    end;
   end
   else if State <> 'original' then
   begin
@@ -969,6 +985,7 @@ begin
   { Original to PTBR-backup (same disk, so a rename), patch into a new file, check it, then swap.
     From here on, any failure or error puts the original back in place. }
   MovedNow := False;
+  TargetMissing := not FileExists(Target);
   try
     DeleteFile(NewFile);
     DeleteFile(Aside);
@@ -978,6 +995,7 @@ begin
       ForceDirectories(BackupDir);
       if not RenameFile(Target, Backup) then
       begin
+        RemoveDir(BackupDir);
         Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target]);
         Exit;
       end;
@@ -1014,7 +1032,7 @@ begin
     begin
       if FileExists(Aside) then
         RenameFile(Aside, Target)
-      else if MovedNow then
+      else if MovedNow or TargetMissing then
       begin
         RenameFile(Backup, Target);
         RemoveDir(BackupDir);

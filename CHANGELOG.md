@@ -12,8 +12,12 @@ As versões seguem o [versionamento semântico](https://semver.org/lang/pt-BR/).
 - Download do HDiffPatch oficial, do repositório do autor, com o hash da versão testada conferido. Sem internet, usa o .zip oficial que estiver na pasta Downloads.
 - Remoção pela lista de aplicativos do Windows e pelo atalho do menu Iniciar, com o original conferido pelo hash antes de voltar.
 - Guia de instalação com as telas (`docs/installation.md`), testes de ponta a ponta num jogo sintético, CI e release automática.
-- Retomada depois de interrupção: se o computador desligar no meio, rodar o instalador de novo termina a aplicação a partir do original guardado.
+- Retomada depois de interrupção, no .exe e nos scripts de Windows: se o computador desligar no meio, rodar de novo termina a aplicação a partir do original guardado.
 - Lançadores `Instalar dublagem.cmd` e `Remover dublagem.cmd` para os scripts de Windows.
+
+### Corrigido
+
+- Scripts de Windows: numa atualização ou remoção, o arquivo que estava no jogo só é apagado depois que o novo está no lugar. Com o original guardado, só uma dublagem publicada (ou nada) é substituída; um arquivo desconhecido fica como está.
 
 ### Mudado
 

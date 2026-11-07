@@ -213,6 +213,11 @@ try {
     Check (Uninstall) 'uninstalls'
     Check ((Audio $g13) -eq (Sha $update)) 'the updated file is kept'
     Check ((Sha (Backup $g13)) -eq (Sha $orig)) 'the old original stays in PTBR-backup'
+
+    Write-Host '[14] Install over an unknown file while the original waits in PTBR-backup'
+    Check ((Install $pack1.Zip $g13) -ne 0) 'the installer refuses'
+    Check ((Audio $g13) -eq (Sha $update)) 'the game file is untouched'
+    Check ((Sha (Backup $g13)) -eq (Sha $orig)) 'the original stays in PTBR-backup'
 }
 finally {
     if (Test-Path -LiteralPath $ENTRY) { [void](Uninstall) }

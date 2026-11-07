@@ -1,3 +1,3 @@
 ﻿# Remove a dublagem PT-BR e devolve o arquivo original do jogo (Scarlet Modder).
-# Para remover, dê dois cliques em "Remover dublagem.cmd" (este arquivo é chamado por ele).
+# Alternativa pelo terminal. Para remover com dois cliques, use "Remover dublagem.cmd", que chama "Instalar dublagem.ps1 -Acao remover".
 & (Join-Path $PSScriptRoot 'Instalar dublagem.ps1') -Acao remover

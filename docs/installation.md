@@ -175,7 +175,6 @@ O comportamento do antivírus ainda não foi medido com o instalador publicado. 
 | `Não consegui baixar o HDiffPatch do GitHub` | Sem internet, ou o GitHub não respondeu | Confira a internet. Sem internet, baixe em outro aparelho o [hdiffpatch_v5.1.3_bin_windows64.zip](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_windows64.zip) e deixe na pasta Downloads: o instalador usa esse arquivo depois de conferir o hash |
 | `Não consegui mexer no arquivo de áudio do jogo` | O jogo, o launcher ou o antivírus estão usando o arquivo | Feche o jogo e o launcher e tente de novo |
 | `O arquivo gerado não confere com a dublagem.` | O .zip baixado veio corrompido, ou o disco falhou | O jogo fica com o áudio original. Baixe o .zip de novo e rode outra vez |
-
 | `Erro inesperado` | Algo fora do previsto, como o antivírus segurando o arquivo novo | O jogo fica com o áudio que tinha antes. Tente de novo; se repetir, avise na página do mod |
 
 Em todos esses casos o jogo fica com o áudio que tinha antes: o instalador só troca o arquivo depois de conferir o resultado. A exceção é o computador desligar no meio, coberta em [Se o computador desligar no meio](#se-o-computador-desligar-no-meio).

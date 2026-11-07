@@ -128,7 +128,7 @@ A instalação manual, sem nenhum script, está descrita no `LEIA-ME.txt` do mod
 | Pasta extraída e versão nova | ✅ pronto | Testes automáticos: aplica a partir da pasta extraída e de uma versão nova sobre o original guardado |
 | Recusar o que não confere | ✅ pronto | Testes automáticos: arquivo do jogo de outra origem, resultado que não bate e pasta que não é do jogo deixam o jogo como estava |
 | Baixar o HDiffPatch | ✅ pronto | Testado baixando do GitHub (fora do CI) e, sem internet, com o .zip oficial na pasta Downloads (no CI) |
-| Interrupção no meio | ✅ pronto | Teste automático: com o arquivo de áudio sumido e o original em `PTBR-backup`, o instalador reconhece a pasta e termina |
+| Interrupção no meio | ✅ pronto | Testes automáticos do .exe e dos scripts de Windows: com o arquivo de áudio sumido e o original em `PTBR-backup`, a pasta é reconhecida e a aplicação termina; com um arquivo desconhecido no lugar, nada é alterado |
 | Remover pela lista do Windows | ✅ pronto | Testes automáticos, inclusive depois de a loja devolver o original ou atualizar o arquivo, e uma remoção real, abrindo o desinstalador como o Windows abre: o original voltou com o hash conferido. O clique pela página de Configurações em si não foi gravado |
 | Scripts de Windows (`.cmd`) | ✅ pronto | Teste automático pelos lançadores, com scripts bloqueados na sessão: instala e remove |
 | Script de Linux e Steam Deck | ⚠️ só em pastas simuladas | Conferido na versão 0.7.1 em pastas que imitam a Steam, o Flatpak, o cartão SD e o Heroic; não testado com o jogo rodando no Linux |

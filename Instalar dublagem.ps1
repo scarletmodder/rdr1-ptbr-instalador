@@ -60,7 +60,12 @@ function Normalizar([string]$p) {
 function Candidato([string]$loja, [string]$raiz) {
     $raiz = Normalizar $raiz
     if (-not $raiz) { return }
-    try { if (-not (Test-Path -LiteralPath (Join-Path $raiz $Rel))) { return } } catch { return }
+    # Aceita também a pasta que perdeu o arquivo numa execução interrompida, com o original guardado em PTBR-backup.
+    try {
+        $temAudio = Test-Path -LiteralPath (Join-Path $raiz $Rel)
+        $interrompida = (Test-Path -LiteralPath (Join-Path $raiz 'RDR.exe')) -and (Test-Path -LiteralPath (Join-Path $raiz "$NomeBackup\audio_d11generic.rpf"))
+        if (-not $temAudio -and -not $interrompida) { return }
+    } catch { return }
     foreach ($a in $Achados) { if ($a.Raiz -ieq $raiz) { return } }
     [void]$Achados.Add([pscustomobject]@{ Loja = $loja; Raiz = $raiz })
 }
@@ -272,6 +277,9 @@ $alvo = Join-Path $jogo.Raiz $Rel
 $pastaBackup = Join-Path $jogo.Raiz $NomeBackup
 $backup = Join-Path $pastaBackup 'audio_d11generic.rpf'
 $novo = "$alvo.ptbr-novo"
+$velho = "$alvo.ptbr-velho"
+# Dublagens publicadas (0.7.1 e 1.0): só elas, ou o original, podem ser trocadas por uma versão nova.
+$DublagensConhecidas = @('3E7172475204CDDA0CFB4F4FE93DBA88DC5EC743789DCC35A32B5B8E4E0A9C21', '34C22357ACF55C75E9A43C6A9ED68DBD7F98C399E4E4A081EA2B7984AEE4577C')
 
 if (-not (Pode-Escrever (Split-Path $alvo -Parent))) { Pedir-Admin $jogo }
 
@@ -282,8 +290,15 @@ if ($Acao -eq 'remover') {
                   'de arquivos da loja (Steam: Propriedades > Arquivos instalados > Verificar integridade).')
         }
         if (Test-Path -LiteralPath $novo) { Remove-Item -LiteralPath $novo -Force }
-        if (Test-Path -LiteralPath $alvo) { Remove-Item -LiteralPath $alvo -Force }
-        Move-Item -LiteralPath $backup -Destination $alvo
+        # O arquivo dublado sai do caminho primeiro e só é apagado depois que o original voltou.
+        if (Test-Path -LiteralPath $velho) { Remove-Item -LiteralPath $velho -Force }
+        if (Test-Path -LiteralPath $alvo) { Move-Item -LiteralPath $alvo -Destination $velho }
+        try { Move-Item -LiteralPath $backup -Destination $alvo }
+        catch {
+            if (-not (Test-Path -LiteralPath $alvo) -and (Test-Path -LiteralPath $velho)) { Move-Item -LiteralPath $velho -Destination $alvo }
+            Sair "Não consegui devolver o original. Feche o jogo e o launcher e tente de novo. Nada foi removido."
+        }
+        if (Test-Path -LiteralPath $velho) { Remove-Item -LiteralPath $velho -Force }
         Remove-Item -LiteralPath $pastaBackup -Force -Recurse -ErrorAction SilentlyContinue
         Sair 'Dublagem removida. O áudio original em inglês voltou.' 0
     }
@@ -301,6 +316,10 @@ if ($eAlvo -eq 'dublado') { Sair "A dublagem v$($cfg.versao_mod) já está insta
 $temBackup = Test-Path -LiteralPath $backup
 if ($temBackup -and (Estado $backup) -ne 'original') {
     Sair "Já existe uma pasta $NomeBackup com um arquivo que não é o original. Nada foi alterado; apague essa pasta só se tiver certeza e rode de novo."
+}
+if ($temBackup -and $eAlvo -ne 'original' -and (Test-Path -LiteralPath $alvo) -and ((Hash $alvo) -notin $DublagensConhecidas)) {
+    Sair ('O arquivo de áudio do seu jogo não é o original nem uma versão da dublagem (a loja pode ter atualizado o jogo, ou há outro mod de áudio). ' +
+          'Nada foi alterado. Verifique os arquivos pela loja e rode de novo.')
 }
 if (-not $temBackup -and $eAlvo -ne 'original') {
     Sair ('O arquivo de áudio do seu jogo é diferente do esperado (outra versão do jogo ou outro mod de áudio). ' +
@@ -364,6 +383,7 @@ $rc = $LASTEXITCODE
 
 function Desfazer([string]$msg) {
     if (Test-Path -LiteralPath $novo) { Remove-Item -LiteralPath $novo -Force }
+    if (-not (Test-Path -LiteralPath $alvo) -and (Test-Path -LiteralPath $velho)) { Move-Item -LiteralPath $velho -Destination $alvo }
     if (-not (Test-Path -LiteralPath $alvo)) { Move-Item -LiteralPath $backup -Destination $alvo; Remove-Item -LiteralPath $pastaBackup -Force -Recurse -ErrorAction SilentlyContinue }
     Sair $msg
 }
@@ -373,6 +393,9 @@ Info 'Conferindo o resultado...'
 if ((Get-Item -LiteralPath $novo).Length -ne [int64]$cfg.dublado_tamanho -or (Hash $novo) -ne $cfg.dublado_sha256) {
     Desfazer 'O arquivo gerado não confere. O jogo ficou com o áudio original. Rode de novo; se repetir, avise na página do mod.'
 }
-if (Test-Path -LiteralPath $alvo) { Remove-Item -LiteralPath $alvo -Force }
-Move-Item -LiteralPath $novo -Destination $alvo
+# O arquivo anterior (uma dublagem antiga) sai do caminho primeiro e só é apagado depois que o novo está no lugar.
+if (Test-Path -LiteralPath $velho) { Remove-Item -LiteralPath $velho -Force }
+if (Test-Path -LiteralPath $alvo) { Move-Item -LiteralPath $alvo -Destination $velho }
+try { Move-Item -LiteralPath $novo -Destination $alvo } catch { Desfazer 'Não consegui pôr o arquivo novo no lugar. O jogo ficou com o áudio que tinha antes. Feche o jogo e o launcher e rode de novo.' }
+if (Test-Path -LiteralPath $velho) { Remove-Item -LiteralPath $velho -Force }
 Sair "Pronto! Dublagem PT-BR v$($cfg.versao_mod) instalada. O original está guardado em $pastaBackup (não apague essa pasta). Abra o jogo." 0

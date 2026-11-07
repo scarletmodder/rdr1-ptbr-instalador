@@ -69,6 +69,23 @@ try {
     Check ($LASTEXITCODE -eq 0) 'finishes with code 0'
     Check ((Sha $audio) -eq (Sha $orig)) 'the original audio is back'
     Check (-not (Test-Path -LiteralPath (Join-Path $game 'PTBR-backup'))) 'PTBR-backup is gone'
+
+    Write-Host '[3] A run cut in the middle: the audio file is gone, the original waits in PTBR-backup'
+    $backup = Join-Path $game 'PTBR-backup\audio_d11generic.rpf'
+    New-Item -ItemType Directory -Path (Join-Path $game 'PTBR-backup') | Out-Null
+    Move-Item -LiteralPath $audio -Destination $backup
+    & cmd.exe /c "`"$mod\Instalar dublagem.cmd`" -Pasta `"$game`" -SemPausa" | Out-Null
+    Check ($LASTEXITCODE -eq 0) 'finishes with code 0'
+    Check ((Sha $audio) -eq (Sha $dub)) 'the game has the dubbed audio'
+    Check (-not (Test-Path -LiteralPath "$audio.ptbr-velho")) 'no leftover file'
+
+    Write-Host '[4] Install over an unknown file while the original waits in PTBR-backup'
+    $other = New-Object byte[] 1500000; $rng.NextBytes($other); [IO.File]::WriteAllBytes($audio, $other)
+    $otherSha = Sha $audio
+    & cmd.exe /c "`"$mod\Instalar dublagem.cmd`" -Pasta `"$game`" -SemPausa" | Out-Null
+    Check ($LASTEXITCODE -ne 0) 'the script refuses'
+    Check ((Sha $audio) -eq $otherSha) 'the game file is untouched'
+    Check ((Sha $backup) -eq (Sha $orig)) 'the original stays in PTBR-backup'
 }
 finally {
     Remove-Item Env:\PSExecutionPolicyPreference -ErrorAction SilentlyContinue
