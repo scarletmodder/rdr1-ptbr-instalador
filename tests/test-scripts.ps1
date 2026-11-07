@@ -12,7 +12,6 @@ $TESTED_SHA = '77F141386E5D8F785C1C846E10FBBC19B6C05AA00E3F59CC44670FB3F0E2AE94'
 $work = Join-Path ([IO.Path]::GetTempPath()) ('rdr1-ptbr-scripts-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $work | Out-Null
 $failures = 0
-$savedModulePath = $env:PSModulePath
 function Check([bool]$ok, [string]$what) {
     if ($ok) { Write-Host "  ok   $what" -ForegroundColor Green }
     else { Write-Host "  FAIL $what" -ForegroundColor Red; $script:failures++ }
@@ -55,8 +54,8 @@ try {
 
     # The launchers must work even when the session asks for blocked scripts.
     $env:PSExecutionPolicyPreference = 'Restricted'
-    # A double click starts Windows PowerShell with the system module path; a PowerShell 7 parent would pass its own.
-    $env:PSModulePath = [Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')
+    # Run from a PowerShell 7 terminal, Windows PowerShell would inherit its module path; the launchers clear it.
+    # This test keeps whatever module path the parent has, so under PowerShell 7 it covers that case.
 
     Write-Host '[1] Instalar dublagem.cmd'
     & cmd.exe /c "`"$mod\Instalar dublagem.cmd`" -Pasta `"$game`" -SemPausa" | Out-Null
@@ -89,7 +88,6 @@ try {
 }
 finally {
     Remove-Item Env:\PSExecutionPolicyPreference -ErrorAction SilentlyContinue
-    $env:PSModulePath = $savedModulePath
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 

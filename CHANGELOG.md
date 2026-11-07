@@ -2,6 +2,12 @@
 
 As versões seguem o [versionamento semântico](https://semver.org/lang/pt-BR/). A versão deste instalador é independente da versão da dublagem: o mesmo instalador aplica qualquer versão publicada no [Nexus Mods](https://www.nexusmods.com/reddeadredemption/mods/855).
 
+## [1.0.1] - 2026-11-07
+
+### Corrigido
+
+- Scripts de Windows: abertos de um terminal do PowerShell 7, os lançadores `.cmd` paravam com `Erro inesperado` antes de mexer no jogo, porque o Windows PowerShell herdava a lista de módulos do PowerShell 7. Os lançadores agora limpam essa lista, e o teste dos scripts cobre esse caso. O instalador `.exe` não muda.
+
 ## [1.0.0] - 2026-11-07
 
 ### Adicionado
@@ -30,5 +36,6 @@ As versões seguem o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 - Primeira versão: scripts de instalação e remoção para Windows (PowerShell) e para Linux e Steam Deck (bash).
 
+[1.0.1]: https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/tag/v1.0.1
 [1.0.0]: https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/tag/v1.0.0
 [0.7.1]: https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/tag/v0.7.1
