@@ -1,0 +1,6 @@
+dist/
+*.exe
+work/
+private/
+local/
+__pycache__/
