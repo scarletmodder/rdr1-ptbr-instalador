@@ -43,6 +43,9 @@ jobs:
       - name: Installer tests
         shell: powershell
         run: ./tests/test-installer.ps1
+      - name: Windows script tests, through the .cmd launchers
+        shell: powershell
+        run: ./tests/test-scripts.ps1
       - name: Build the release notes
         shell: pwsh
         run: |
@@ -81,7 +84,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = $env:GITHUB_REF_NAME
-          $expected = @('SHA256SUMS.txt', "Instalador-Dublagem-PTBR-RDR1-$tag.exe", "Instalador-Dublagem-PTBR-RDR1-Linux-$tag.zip") | Sort-Object
+          $expected = @('SHA256SUMS.txt', "Instalador-Dublagem-PTBR-RDR1-$tag.exe", "Instalador-Dublagem-PTBR-RDR1-Scripts-$tag.zip") | Sort-Object
           $list = @(Get-ChildItem -Recurse -File package | ForEach-Object { [IO.Path]::GetRelativePath('package', $_.FullName).Replace('\', '/') } | Sort-Object)
           $list | ForEach-Object { Write-Host $_ }
           if (($list -join '|') -cne ($expected -join '|')) { throw "The package should have exactly: $($expected -join ', ')" }
@@ -91,5 +94,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = $env:GITHUB_REF_NAME
-          gh release create $tag "package/Instalador-Dublagem-PTBR-RDR1-$tag.exe" "package/Instalador-Dublagem-PTBR-RDR1-Linux-$tag.zip" package/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --title "Instalador da dublagem PT-BR do Red Dead Redemption $tag" --notes-file notes/notes.md
+          gh release create $tag "package/Instalador-Dublagem-PTBR-RDR1-$tag.exe" "package/Instalador-Dublagem-PTBR-RDR1-Scripts-$tag.zip" package/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --title "Instalador da dublagem PT-BR do Red Dead Redemption $tag" --notes-file notes/notes.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

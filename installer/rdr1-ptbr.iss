@@ -18,6 +18,9 @@
 #define AppGuid "4F7C2B91-6A3E-4D58-B1E0-9C2A7D5E8F13"
 #define AudioRel "game\audio_d11generic.rpf"
 #define BackupDirName "PTBR-backup"
+#define StateKey "Software\Scarlet Modder\RDR1-PTBR"
+#define OriginalSha "D25A21C3C6C1D8FACBD97DC4BEE1DCD8CE0537159578FAB0D6FC227683F0E8BB"
+#define OriginalSize "3898789728"
 ; HDiffPatch: the newest release is looked up on GitHub; this one is the fallback and the tested one.
 #define HdpApi "https://api.github.com/repos/sisong/HDiffPatch/releases/latest"
 #define HdpTestedTag "v5.1.3"
@@ -125,9 +128,12 @@ ErrGameOther=O arquivo de áudio do seu jogo é diferente do esperado (outra ver
 ErrNoWrite=Não consegui mexer no arquivo de áudio do jogo:%n%1%n%nFeche o jogo e o launcher e tente de novo. Nada foi alterado.
 ErrPatch=O patch falhou (código %1). O jogo ficou com o áudio original.
 ErrResult=O arquivo gerado não confere com a dublagem. O jogo ficou com o áudio original. Tente de novo; se repetir, avise na página do mod.
+ErrUnexpected=Erro inesperado:%n%1%n%nO jogo ficou com o áudio que tinha antes. Tente de novo; se repetir, avise na página do mod.
+ErrOtherGame=A dublagem está aplicada em outra pasta do jogo:%n%n%1%n%nRemova antes por Configurações do Windows > Aplicativos > Dublagem PT-BR do Red Dead Redemption > Desinstalar e rode o instalador de novo. Nada foi alterado.
 AlreadyInstalled=A dublagem v%1 já estava instalada neste jogo.
 UninstallNoBackup=Não achei o original guardado em PTBR-backup:%n%1%n%nPara voltar ao inglês, use a verificação de arquivos da loja (Steam: Propriedades > Arquivos instalados > Verificar integridade; Epic: Gerenciar > Verificar; Rockstar: Configurações > o jogo > Verificar integridade).
 UninstallBackupOther=O arquivo em PTBR-backup não é o original do jogo, então não foi usado:%n%1%n%nPara voltar ao inglês, use a verificação de arquivos da loja.
+UninstallNotDub=O arquivo de áudio do jogo não é mais o da dublagem (a loja pode ter atualizado o jogo), então ele foi mantido:%n%1%n%nO original antigo continua guardado em:%n%2%n%nSe o jogo estiver funcionando, essa pasta pode ser apagada.
 UninstallGameOpen=O jogo está aberto. Feche o Red Dead Redemption e desinstale de novo.
 UninstallRestoreFailed=Não consegui devolver o original:%n%1%n%nFeche o jogo e o launcher e desinstale de novo. Nada foi removido.
 NexusLink=Baixar a dublagem no Nexus Mods
@@ -138,24 +144,21 @@ ShortcutGuide=Guia de instalação
 Source: "scarlet.ico"; DestDir: "{app}"; Flags: ignoreversion touch
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion touch
 
-[UninstallDelete]
-Type: files; Name: "{app}\dublagem.ini"
+[Registry]
+Root: HKA; Subkey: "{#StateKey}"; Flags: uninsdeletekey
 
 [Icons]
 Name: "{autoprograms}\{#AppName}\{cm:ShortcutUninstall}"; Filename: "{uninstallexe}"; IconFilename: "{app}\scarlet.ico"
 Name: "{autoprograms}\{#AppName}\{cm:ShortcutGuide}"; Filename: "{#AppURL}/blob/main/docs/installation.md"
 
 [Code]
-const
-  StateFile = 'dublagem.ini';
-
 var
   PackPage: TWizardPage;
   PackEdit: TNewEdit;
   PackStatus: TNewStaticText;
   GamePage: TInputDirWizardPage;
   Progress: TOutputProgressWizardPage;
-  PackVersion, OriginalSha: String;
+  PackVersion, OriginalSha, OriginalSize, DubbedSha, DubbedSize: String;
 
 { ------------------------------------------------------------------ small helpers }
 
@@ -217,9 +220,30 @@ begin
   Result := Dir;
 end;
 
+{ The game folder has its audio file, or lost it in an interrupted run while the original waits in PTBR-backup. }
 function HasGame(const Dir: String): Boolean;
 begin
-  Result := (Dir <> '') and FileExists(AddBackslash(Dir) + '{#AudioRel}');
+  Result := (Dir <> '') and (FileExists(AddBackslash(Dir) + '{#AudioRel}') or
+    (FileExists(AddBackslash(Dir) + 'RDR.exe') and FileExists(AddBackslash(Dir) + '{#BackupDirName}\audio_d11generic.rpf')));
+end;
+
+{ Value of "key"<blanks>"value" in a Steam .acf or .vdf file. }
+function VdfValue(const Text, Key: String): String;
+var
+  P: Integer;
+  Rest: String;
+begin
+  Result := '';
+  P := Pos('"' + Key + '"', Text);
+  if P = 0 then
+    Exit;
+  Rest := TrimLeft(Copy(Text, P + Length(Key) + 2, MaxInt));
+  if Copy(Rest, 1, 1) <> '"' then
+    Exit;
+  Delete(Rest, 1, 1);
+  P := Pos('"', Rest);
+  if P > 0 then
+    Result := Copy(Rest, 1, P - 1);
 end;
 
 function IsXbox(const Dir: String): Boolean;
@@ -463,7 +487,7 @@ begin
   Start := 1;
   while Library <> '' do
   begin
-    InstallDir := JsonValue(ReadText(AddBackslash(Library) + 'steamapps\appmanifest_2668510.acf'), 'installdir');
+    InstallDir := VdfValue(ReadText(AddBackslash(Library) + 'steamapps\appmanifest_2668510.acf'), 'installdir');
     if InstallDir = '' then
       InstallDir := 'Red Dead Redemption';
     Consider(AddBackslash(Library) + 'steamapps\common\' + InstallDir, Best);
@@ -769,10 +793,59 @@ begin
   end;
 end;
 
+{ Gets hpatchz.exe from a local zip, or downloads Url (checked against Sha when it is given; without internet, the
+  tested zip in Downloads). Returns its path, or '' with the reason in Err. }
+function FetchTool(const Url, Sha, LocalZip: String; var Err: String): String;
+var
+  Zip, Dir: String;
+begin
+  Result := '';
+  Zip := LocalZip;
+  if Zip = '' then
+  begin
+    Step(CustomMessage('StepDownload'));
+    DeleteFile(ExpandConstant('{tmp}\hdiffpatch.zip'));
+    try
+      DownloadTemporaryFile(Url, 'hdiffpatch.zip', Sha, @OnDownload);
+      Zip := ExpandConstant('{tmp}\hdiffpatch.zip');
+    except
+      Log('Download failed: ' + GetExceptionMessage);
+      Err := FmtMessage(CustomMessage('ErrDownload'), [GetExceptionMessage]);
+      { Without internet: the tested release already in Downloads, if its fingerprint is the official one. }
+      Zip := DownloadsDir() + '\' + ExtractFileName('{#HdpTestedUrl}');
+      if not FileExists(Zip) or (FileSha256(Zip) <> Uppercase('{#HdpTestedZipSha}')) then
+        Exit;
+      Log('Using the HDiffPatch zip found in Downloads: ' + Zip);
+    end;
+  end;
+  Step(CustomMessage('StepExtractTool'));
+  Dir := ExpandConstant('{tmp}\hdiffpatch');
+  DelTree(Dir, True, True, True);
+  try
+    ExtractArchive(Zip, Dir, '', True, @OnExtract);
+  except
+    Err := FmtMessage(CustomMessage('ErrDownload'), [GetExceptionMessage]);
+    Exit;
+  end;
+  Result := Dir + '\windows64\hpatchz.exe';
+  if not FileExists(Result) then
+  begin
+    Result := '';
+    Err := CustomMessage('ErrTool');
+  end;
+end;
+
+{ The game folder recorded by an earlier install, read from the registry (Unicode, unlike an ini file). }
+function RecordedGame(): String;
+begin
+  if not RegQueryStringValue(HKA, '{#StateKey}', 'pasta', Result) then
+    Result := '';
+end;
+
 { Returns '' when the dub is in place, or the reason it is not. The game is untouched unless the end result checks out. }
 function ApplyDub(): String;
 var
-  Pack, Data, Json, Url, Sha, ToolZip, Hpatchz, PatchFile, Game, Target, BackupDir, Backup, NewFile, State: String;
+  Pack, Data, Json, Url, Sha, ToolZip, Hpatchz, PatchFile, Game, Target, BackupDir, Backup, NewFile, Aside, State, Err, Other: String;
   OrigSize, DubSize, Free, Total: Int64;
   Code: Integer;
   MovedNow: Boolean;
@@ -784,11 +857,19 @@ begin
   BackupDir := Game + '\{#BackupDirName}';
   Backup := BackupDir + '\audio_d11generic.rpf';
   NewFile := Target + '.ptbr-novo';
+  Aside := Target + '.ptbr-velho';
 
   Step(CustomMessage('StepCheckGame'));
   if GameRunning() then
   begin
     Result := CustomMessage('ErrGameOpen');
+    Exit;
+  end;
+  { The uninstaller restores one game only: another game still dubbed must be restored first. }
+  Other := RecordedGame();
+  if (Other <> '') and (CompareText(NormalizeDir(Other), Game) <> 0) and FileExists(Other + '\{#BackupDirName}\audio_d11generic.rpf') then
+  begin
+    Result := FmtMessage(CustomMessage('ErrOtherGame'), [Other]);
     Exit;
   end;
   if IsXbox(Game) then
@@ -825,6 +906,9 @@ begin
     Exit;
   end;
   OriginalSha := Uppercase(JsonValue(Json, 'original_sha256'));
+  OriginalSize := JsonValue(Json, 'original_tamanho');
+  DubbedSha := Uppercase(JsonValue(Json, 'dublado_sha256'));
+  DubbedSize := JsonValue(Json, 'dublado_tamanho');
   OrigSize := StrToInt64Def(JsonValue(Json, 'original_tamanho'), -1);
   DubSize := StrToInt64Def(JsonValue(Json, 'dublado_tamanho'), -1);
 
@@ -862,79 +946,79 @@ begin
     Exit;
   end;
 
-  { The program that applies the patch. }
+  { The program that applies the patch. A newer release that does not work falls back to the tested one. }
   ToolZip := ExpandConstant('{param:HDIFFPATCHZIP|}');
-  if ToolZip = '' then
-  begin
-    Step(CustomMessage('StepDownload'));
-    PickHdiffpatch(Url, Sha);
-    try
-      DownloadTemporaryFile(Url, 'hdiffpatch.zip', Sha, @OnDownload);
-      ToolZip := ExpandConstant('{tmp}\hdiffpatch.zip');
-    except
-      { Without internet: the tested release already in Downloads, if its fingerprint is the official one. }
-      Log('Download failed: ' + GetExceptionMessage);
-      ToolZip := DownloadsDir() + '\' + ExtractFileName('{#HdpTestedUrl}');
-      if not FileExists(ToolZip) or (FileSha256(ToolZip) <> Uppercase('{#HdpTestedZipSha}')) then
-      begin
-        Result := FmtMessage(CustomMessage('ErrDownload'), [GetExceptionMessage]);
-        Exit;
-      end;
-      Log('Using the HDiffPatch zip found in Downloads: ' + ToolZip);
-    end;
-  end;
-  Step(CustomMessage('StepExtractTool'));
-  try
-    ExtractArchive(ToolZip, ExpandConstant('{tmp}\hdiffpatch'), '', True, @OnExtract);
-  except
-    Result := FmtMessage(CustomMessage('ErrDownload'), [GetExceptionMessage]);
-    Exit;
-  end;
-  Hpatchz := ExpandConstant('{tmp}\hdiffpatch\windows64\hpatchz.exe');
-  if not FileExists(Hpatchz) then
-  begin
-    Result := CustomMessage('ErrTool');
-    Exit;
-  end;
-
-  { Original to PTBR-backup (same disk, so a rename), patch into a new file, check it, then swap. }
-  MovedNow := False;
-  if not FileExists(Backup) then
-  begin
-    Step(CustomMessage('StepBackup'));
-    ForceDirectories(BackupDir);
-    if not RenameFile(Target, Backup) then
-    begin
-      Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target]);
-      Exit;
-    end;
-    MovedNow := True;
-  end;
-
-  Step(CustomMessage('StepPatch'));
-  DeleteFile(NewFile);
-  if not Exec(Hpatchz, '-f "' + Backup + '" "' + PatchFile + '" "' + NewFile + '"', '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
-    Result := FmtMessage(CustomMessage('ErrPatch'), [IntToStr(Code)])
+  if ToolZip <> '' then
+    Hpatchz := FetchTool('', '', ToolZip, Err)
   else
   begin
-    Step(CustomMessage('StepHashResult'));
-    if (FileSize64(NewFile) <> DubSize) or (FileSha256(NewFile) <> Uppercase(JsonValue(Json, 'dublado_sha256'))) then
-      Result := CustomMessage('ErrResult')
+    PickHdiffpatch(Url, Sha);
+    Hpatchz := FetchTool(Url, Sha, '', Err);
+    if (Hpatchz = '') and (Url <> '{#HdpTestedUrl}') and (ExpandConstant('{param:HDIFFPATCHURL|}') = '') then
+    begin
+      Log('The newer HDiffPatch did not work, trying the tested release: ' + Err);
+      Hpatchz := FetchTool('{#HdpTestedUrl}', '{#HdpTestedZipSha}', '', Err);
+    end;
+  end;
+  if Hpatchz = '' then
+  begin
+    Result := Err;
+    Exit;
+  end;
+
+  { Original to PTBR-backup (same disk, so a rename), patch into a new file, check it, then swap.
+    From here on, any failure or error puts the original back in place. }
+  MovedNow := False;
+  try
+    DeleteFile(NewFile);
+    DeleteFile(Aside);
+    if not FileExists(Backup) then
+    begin
+      Step(CustomMessage('StepBackup'));
+      ForceDirectories(BackupDir);
+      if not RenameFile(Target, Backup) then
+      begin
+        Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target]);
+        Exit;
+      end;
+      MovedNow := True;
+    end;
+
+    Step(CustomMessage('StepPatch'));
+    if not Exec(Hpatchz, '-f "' + Backup + '" "' + PatchFile + '" "' + NewFile + '"', '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+      Result := FmtMessage(CustomMessage('ErrPatch'), [IntToStr(Code)])
     else
     begin
-      DeleteFile(Target);
-      if not RenameFile(NewFile, Target) then
-        Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target]);
+      Step(CustomMessage('StepHashResult'));
+      if (FileSize64(NewFile) <> DubSize) or (FileSha256(NewFile) <> Uppercase(JsonValue(Json, 'dublado_sha256'))) then
+        Result := CustomMessage('ErrResult')
+      else
+      begin
+        { The file in place (an older dub, when updating) steps aside first and is deleted only after the swap. }
+        if FileExists(Target) and not RenameFile(Target, Aside) then
+          Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target])
+        else if not RenameFile(NewFile, Target) then
+          Result := FmtMessage(CustomMessage('ErrNoWrite'), [Target])
+        else
+          DeleteFile(Aside);
+      end;
     end;
+  except
+    Result := FmtMessage(CustomMessage('ErrUnexpected'), [GetExceptionMessage]);
   end;
 
   if Result <> '' then
   begin
     DeleteFile(NewFile);
-    if not FileExists(Target) and MovedNow then
+    if not FileExists(Target) then
     begin
-      RenameFile(Backup, Target);
-      RemoveDir(BackupDir);
+      if FileExists(Aside) then
+        RenameFile(Aside, Target)
+      else if MovedNow then
+      begin
+        RenameFile(Backup, Target);
+        RemoveDir(BackupDir);
+      end;
     end;
     Exit;
   end;
@@ -945,7 +1029,11 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Progress.Show;
   try
-    Result := ApplyDub();
+    try
+      Result := ApplyDub();
+    except
+      Result := FmtMessage(CustomMessage('ErrUnexpected'), [GetExceptionMessage]);
+    end;
   finally
     Progress.Hide;
   end;
@@ -954,32 +1042,45 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  Ini: String;
 begin
   if CurStep <> ssPostInstall then
     Exit;
-  Ini := ExpandConstant('{app}\' + StateFile);
-  SetIniString('jogo', 'pasta', NormalizeDir(GamePage.Values[0]), Ini);
-  SetIniString('jogo', 'versao_dublagem', PackVersion, Ini);
-  SetIniString('jogo', 'original_sha256', OriginalSha, Ini);
+  { The registry keeps the game folder in Unicode; the key goes away with the uninstall ([Registry] uninsdeletekey). }
+  RegWriteStringValue(HKA, '{#StateKey}', 'pasta', NormalizeDir(GamePage.Values[0]));
+  RegWriteStringValue(HKA, '{#StateKey}', 'versao_dublagem', PackVersion);
+  RegWriteStringValue(HKA, '{#StateKey}', 'original_sha256', OriginalSha);
+  RegWriteStringValue(HKA, '{#StateKey}', 'original_tamanho', OriginalSize);
+  RegWriteStringValue(HKA, '{#StateKey}', 'dublado_sha256', DubbedSha);
+  RegWriteStringValue(HKA, '{#StateKey}', 'dublado_tamanho', DubbedSize);
 end;
 
 { ------------------------------------------------------------------ uninstall: the original goes back }
 
+function StateValue(const Name, Default: String): String;
+begin
+  if not RegQueryStringValue(HKA, '{#StateKey}', Name, Result) then
+    Result := Default;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  Game, Target, BackupDir, Backup, Expected, Aside: String;
+  Game, Target, BackupDir, Backup, Expected, DubSha, Aside: String;
+  OrigSize, DubSize, Size: Int64;
 begin
   if CurUninstallStep <> usUninstall then
     Exit;
-  Game := GetIniString('jogo', 'pasta', '', ExpandConstant('{app}\' + StateFile));
+  Game := StateValue('pasta', '');
+  if Game = '' then
+    Exit;
   Target := Game + '\{#AudioRel}';
   BackupDir := Game + '\{#BackupDirName}';
   Backup := BackupDir + '\audio_d11generic.rpf';
-  { The hash of the original is the same for every version of the dub: it is the game's own file. }
-  Expected := GetIniString('jogo', 'original_sha256', 'D25A21C3C6C1D8FACBD97DC4BEE1DCD8CE0537159578FAB0D6FC227683F0E8BB', ExpandConstant('{app}\' + StateFile));
-  if (Game = '') or not FileExists(Backup) then
+  { The original is the same for every version of the dub: it is the game's own file. }
+  Expected := Uppercase(StateValue('original_sha256', '{#OriginalSha}'));
+  OrigSize := StrToInt64Def(StateValue('original_tamanho', '{#OriginalSize}'), -1);
+  DubSha := Uppercase(StateValue('dublado_sha256', ''));
+  DubSize := StrToInt64Def(StateValue('dublado_tamanho', ''), -1);
+  if not FileExists(Backup) then
   begin
     SuppressibleMsgBox(FmtMessage(CustomMessage('UninstallNoBackup'), [BackupDir]), mbInformation, MB_OK, IDOK);
     Exit;
@@ -989,11 +1090,26 @@ begin
     SuppressibleMsgBox(CustomMessage('UninstallGameOpen'), mbError, MB_OK, IDOK);
     Abort;
   end;
-  if FileSha256(Backup) <> Uppercase(Expected) then
+  if FileSha256(Backup) <> Expected then
   begin
     SuppressibleMsgBox(FmtMessage(CustomMessage('UninstallBackupOther'), [Backup]), mbError, MB_OK, IDOK);
     Exit;
   end;
+
+  { What the game has now. The store may have put the original back, or replaced the file with an update. }
+  Size := FileSize64(Target);
+  if (Size = OrigSize) and (FileSha256(Target) = Expected) then
+  begin
+    DeleteFile(Backup);
+    RemoveDir(BackupDir);
+    Exit;
+  end;
+  if (Size >= 0) and (DubSize >= 0) and ((Size <> DubSize) or (FileSha256(Target) <> DubSha)) then
+  begin
+    SuppressibleMsgBox(FmtMessage(CustomMessage('UninstallNotDub'), [Target, BackupDir]), mbInformation, MB_OK, IDOK);
+    Exit;
+  end;
+
   { The dubbed file steps aside first, so a failure never leaves the game without its audio. }
   Aside := Target + '.ptbr-velho';
   DeleteFile(Target + '.ptbr-novo');

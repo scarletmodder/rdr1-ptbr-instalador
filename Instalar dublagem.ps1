@@ -24,6 +24,14 @@ function Sair([string]$msg, [int]$codigo = 1) {
     exit $codigo
 }
 function Info([string]$msg) { Write-Host $msg }
+# Qualquer erro não previsto mostra a mensagem e espera o Enter, em vez de fechar a janela sem explicação.
+trap {
+    Write-Host ''
+    Write-Host ('Erro inesperado: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host 'Tire uma foto desta tela e mande na página do mod. Se o original já tinha sido guardado, ele está na pasta PTBR-backup do jogo; rode o instalador de novo.'
+    Pausa
+    exit 1
+}
 
 if (-not (Test-Path -LiteralPath (Join-Path $Dados 'versao.json'))) {
     Sair 'A pasta "dados" não está ao lado do instalador. Extraia o arquivo .zip inteiro e rode de novo.'

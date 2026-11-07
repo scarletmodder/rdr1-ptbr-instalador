@@ -4,7 +4,7 @@
 
 **Da página do mod no Nexus até o jogo dublado, com as telas do instalador e a remoção no final.**
 
-[Voltar ao README](../README.md) · [Instalar](#-instalar) · [Atualizar](#-atualizar-para-uma-versão-nova-da-dublagem) · [Remover](#%EF%B8%8F-remover-a-dublagem) · [Avisos do Windows](#%EF%B8%8F-avisos-do-windows-e-do-antivírus) · [Problemas](#-problemas-comuns) · [Linux e Steam Deck](#-linux-e-steam-deck)
+[Voltar ao README](../README.md) · [Instalar](#-instalar) · [Atualizar](#-atualizar-para-uma-versão-nova-da-dublagem) · [Remover](#%EF%B8%8F-remover-a-dublagem) · [Avisos do Windows](#%EF%B8%8F-avisos-do-windows-e-do-antivírus) · [Problemas](#-problemas-comuns) · [Linux, Steam Deck e scripts](#-linux-steam-deck-e-scripts)
 
 </div>
 
@@ -19,6 +19,16 @@ Você vai precisar de:
 - **Cerca de 4 GB livres** no disco do jogo.
 
 O instalador não traz nenhum arquivo do jogo nem a dublagem: ele aplica sobre o seu jogo o patch que você baixou do Nexus.
+
+### Precisa instalar alguma coisa antes?
+
+Não. Você não precisa de .NET, de Visual C++ nem de nenhum outro programa da Microsoft:
+
+- O instalador é feito no [Inno Setup](https://jrsoftware.org/isinfo.php), que gera um programa autônomo: ele não usa .NET nem outro framework.
+- O HDiffPatch que ele baixa (`hpatchz.exe`, versão 64 bits) é compilado sem dependências externas: a única biblioteca que ele usa é a `KERNEL32.dll`, que faz parte do próprio Windows. Isso foi conferido na lista de importações do arquivo.
+- Para conferir hashes e ver se o jogo está aberto, o instalador usa o `certutil` e o WMI, que também vêm no Windows.
+
+A única exigência é um Windows de 64 bits, porque o HDiffPatch baixado é a versão de 64 bits.
 
 ## 🚀 Instalar
 
@@ -92,9 +102,9 @@ Abra o jogo como sempre. A dublagem toca com o jogo em qualquer idioma; para as 
 1. Confere se o jogo está fechado e se a pasta escolhida é do jogo.
 2. Abre o .zip da dublagem numa pasta temporária e lê o `dados\versao.json`, que diz o tamanho e o hash do arquivo original e do dublado.
 3. Confere o `game\audio_d11generic.rpf` do seu jogo. Só continua se ele for idêntico ao original esperado, ou se o original já estiver guardado de uma instalação anterior.
-4. Baixa o HDiffPatch do [repositório oficial do autor](https://github.com/sisong/HDiffPatch/releases). A versão 5.1.3, testada com a dublagem, tem o hash conferido no download. Se houver uma versão mais nova, o instalador baixa a mais nova, sempre do repositório do autor.
+4. Baixa o HDiffPatch do [repositório oficial do autor](https://github.com/sisong/HDiffPatch/releases). A versão 5.1.3, testada com a dublagem, tem o hash conferido no download. Se houver uma versão mais nova, o instalador baixa a mais nova, sempre do repositório do autor; se ela não tiver o programa esperado, volta para a 5.1.3.
 5. Move o arquivo original para a pasta `PTBR-backup`, dentro da pasta do jogo.
-6. Aplica o patch num arquivo novo, confere tamanho e hash do resultado e só então coloca o arquivo no lugar. Se qualquer passo falhar, o original volta e nada fica pela metade.
+6. Aplica o patch num arquivo novo, confere tamanho e hash do resultado e só então coloca o arquivo no lugar. Numa atualização, o arquivo da versão anterior só é apagado depois que o novo está no lugar. Se qualquer passo falhar, ou se acontecer um erro inesperado, o arquivo que estava no jogo volta.
 7. Cria a entrada "Dublagem PT-BR do Red Dead Redemption" na lista de aplicativos do Windows e, no menu Iniciar, os atalhos **Remover a dublagem (voltar ao inglês)** e **Guia de instalação**.
 
 O instalador não mexe em saves e só acessa a internet para consultar e baixar o HDiffPatch no GitHub. Os arquivos temporários (o .zip aberto e o HDiffPatch) são apagados ao final.
@@ -104,6 +114,10 @@ O instalador não mexe em saves e só acessa a internet para consultar e baixar 
 Baixe o .zip da versão nova no Nexus e rode o instalador de novo. Não precisa remover a versão antiga: o instalador parte do original guardado em `PTBR-backup` e aplica a versão nova sobre ele.
 
 Se a mesma versão já estiver instalada, o instalador termina sem alterar nada.
+
+### Se o computador desligar no meio
+
+Se a energia cair ou o computador desligar durante a aplicação, o jogo pode ficar sem o arquivo `game\audio_d11generic.rpf`, mas o original continua guardado em `PTBR-backup`. Rode o instalador de novo: ele reconhece a pasta do jogo por esse original guardado e termina a aplicação.
 
 ## 🗑️ Remover a dublagem
 
@@ -130,6 +144,8 @@ O desinstalador confere o hash do original guardado antes de usá-lo, coloca-o d
 | O jogo está aberto | Aparece "O jogo está aberto. Feche o Red Dead Redemption e desinstale de novo." Nada é removido |
 | A pasta `PTBR-backup` foi apagada | O desinstalador avisa e sai da lista sem mexer no jogo. Para voltar ao inglês, use a verificação de arquivos da loja (Steam: Propriedades, Arquivos instalados, Verificar integridade) |
 | O arquivo em `PTBR-backup` não é o original | O desinstalador não usa esse arquivo e indica a verificação de arquivos da loja |
+| A loja já devolveu o original (verificação de arquivos) | O desinstalador vê que o jogo já está em inglês, apaga a pasta `PTBR-backup` e sai da lista |
+| A loja atualizou o jogo e trocou o arquivo de áudio | O desinstalador mantém o arquivo novo, para não desfazer a atualização, e avisa que o original antigo ficou em `PTBR-backup`. Se o jogo estiver funcionando, essa pasta pode ser apagada |
 | O Windows não deixou devolver o original | Aparece "Não consegui devolver o original" e nada é removido. Feche o jogo e o launcher e desinstale de novo |
 
 </details>
@@ -154,16 +170,28 @@ O comportamento do antivírus ainda não foi medido com o instalador publicado. 
 | `O Windows não deixa alterar os arquivos da versão do Xbox` | Jogo da Microsoft Store ou do Xbox app | A dublagem funciona só nas versões Steam, Epic e Rockstar |
 | `O arquivo de áudio do seu jogo é diferente do esperado` | Outra versão do jogo ou outro mod de áudio | Verifique os arquivos do jogo pela loja e rode de novo. Se o jogo atualizou, aguarde uma versão nova da dublagem |
 | `Já existe uma pasta PTBR-backup no jogo com um arquivo que não é o original.` | Sobrou uma pasta de outra tentativa ou de outro mod | Apague essa pasta só se tiver certeza e rode de novo |
+| `A dublagem está aplicada em outra pasta do jogo` | Você tem duas instalações do jogo e a outra ainda está dublada | Remova a dublagem pela lista de aplicativos do Windows (ela volta a outra pasta ao inglês) e rode o instalador de novo |
 | `Falta espaço no disco do jogo` | Menos de cerca de 4 GB livres | Libere espaço no disco do jogo |
 | `Não consegui baixar o HDiffPatch do GitHub` | Sem internet, ou o GitHub não respondeu | Confira a internet. Sem internet, baixe em outro aparelho o [hdiffpatch_v5.1.3_bin_windows64.zip](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_windows64.zip) e deixe na pasta Downloads: o instalador usa esse arquivo depois de conferir o hash |
 | `Não consegui mexer no arquivo de áudio do jogo` | O jogo, o launcher ou o antivírus estão usando o arquivo | Feche o jogo e o launcher e tente de novo |
 | `O arquivo gerado não confere com a dublagem.` | O .zip baixado veio corrompido, ou o disco falhou | O jogo fica com o áudio original. Baixe o .zip de novo e rode outra vez |
 
-Em todos esses casos o jogo fica como estava: o instalador só troca o arquivo depois de conferir o resultado.
+| `Erro inesperado` | Algo fora do previsto, como o antivírus segurando o arquivo novo | O jogo fica com o áudio que tinha antes. Tente de novo; se repetir, avise na página do mod |
 
-## 🐧 Linux e Steam Deck
+Em todos esses casos o jogo fica com o áudio que tinha antes: o instalador só troca o arquivo depois de conferir o resultado. A exceção é o computador desligar no meio, coberta em [Se o computador desligar no meio](#se-o-computador-desligar-no-meio).
 
-O instalador .exe é só para Windows. No Linux e no Steam Deck (Modo Desktop), use o script `instalar-linux.sh`, que está na [página de downloads](https://github.com/scarletmodder/rdr1-ptbr-instalador/releases), e siga as instruções do LEIA-ME.txt do mod.
+## 🐧 Linux, Steam Deck e scripts
+
+O instalador .exe é só para Windows. Para Linux e Steam Deck, e para quem prefere instalar no Windows sem o .exe, cada release traz o `Instalador-Dublagem-PTBR-RDR1-Scripts-v<versão>.zip`.
+
+1. Feche o jogo. No Steam Deck, vá para o Modo Desktop.
+2. Baixe o [HDiffPatch para Linux](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_linux64.zip) e deixe na pasta Downloads, sem extrair. No Windows, o [HDiffPatch para Windows](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_windows64.zip).
+3. Extraia o .zip do mod numa pasta e, dentro dela, ao lado do `LEIA-ME.txt` e da pasta `dados`, o zip de scripts da [página de downloads](https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/latest).
+4. Instale:
+   - **Linux e Steam Deck:** na pasta do mod, botão direito, **Abrir terminal aqui** (no Deck, Konsole), e digite `bash instalar-linux.sh`. Para remover: `bash instalar-linux.sh remover`.
+   - **Windows:** dois cliques em `Instalar dublagem.cmd`. Para remover: dois cliques em `Remover dublagem.cmd`. Não use "Executar com o PowerShell" do menu: no Windows 11, com scripts bloqueados (o padrão), a janela abre e fecha sem fazer nada.
+
+O script de Linux acha o jogo na Steam nativa, no Flatpak, no cartão SD do Steam Deck e no Heroic, e não precisa de `sudo`. A instalação manual, sem nenhum script, está no `LEIA-ME.txt` do mod.
 
 ## 📚 Documentação
 

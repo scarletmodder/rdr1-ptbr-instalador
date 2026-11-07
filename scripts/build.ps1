@@ -22,18 +22,21 @@ if (-not $Iscc) {
 if (-not $Iscc) { throw 'ISCC.exe (Inno Setup 6.7 or newer) not found. Pass -Iscc.' }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $root 'dist') | Out-Null
+# Only this build in dist\, so the tests and the release never pick an older installer.
+Get-ChildItem -LiteralPath (Join-Path $root 'dist') -Filter 'Instalador-*' | Remove-Item -Force
 & $Iscc /Qp "/DAppVersion=$version" (Join-Path $root 'installer\rdr1-ptbr.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with code $LASTEXITCODE" }
 
 $setup = Join-Path $root "dist\Instalador-Dublagem-PTBR-RDR1-v$version.exe"
 
-# The Linux and Steam Deck script, zipped on its own (it goes next to the extracted mod).
+# The scripts, for Linux and Steam Deck and for Windows without the .exe, in the same flat layout as the 0.7.1 zip:
+# the LEIA-ME inside the Nexus package says to extract it next to the mod's dados folder.
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
-$linux = Join-Path $root "dist\Instalador-Dublagem-PTBR-RDR1-Linux-v$version.zip"
-if (Test-Path -LiteralPath $linux) { Remove-Item -LiteralPath $linux }
-$zip = [IO.Compression.ZipFile]::Open($linux, [IO.Compression.ZipArchiveMode]::Create)
+$scripts = Join-Path $root "dist\Instalador-Dublagem-PTBR-RDR1-Scripts-v$version.zip"
+if (Test-Path -LiteralPath $scripts) { Remove-Item -LiteralPath $scripts }
+$zip = [IO.Compression.ZipFile]::Open($scripts, [IO.Compression.ZipArchiveMode]::Create)
 try {
-    foreach ($name in 'instalar-linux.sh', 'LICENSE') {
+    foreach ($name in 'instalar-linux.sh', 'Instalar dublagem.cmd', 'Remover dublagem.cmd', 'Instalar dublagem.ps1', 'Remover dublagem.ps1', 'LICENSE') {
         $entry = $zip.CreateEntry($name, [IO.Compression.CompressionLevel]::Optimal)
         $entry.LastWriteTime = [DateTimeOffset]'2026-01-01T00:00:00Z'
         $out = $entry.Open()
@@ -42,10 +45,10 @@ try {
 }
 finally { $zip.Dispose() }
 
-$lines = foreach ($file in $setup, $linux) {
+$lines = foreach ($file in $setup, $scripts) {
     "$((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path $file -Leaf)"
 }
 $sums = Join-Path $root 'dist\SHA256SUMS.txt'
 [IO.File]::WriteAllText($sums, ($lines -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
-Write-Host "Built $setup and $linux"
+Write-Host "Built $setup and $scripts"
 $lines | ForEach-Object { Write-Host $_ }

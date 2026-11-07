@@ -32,6 +32,9 @@ jobs:
       - name: Installer tests
         shell: powershell
         run: ./tests/test-installer.ps1
+      - name: Windows script tests, through the .cmd launchers
+        shell: powershell
+        run: ./tests/test-scripts.ps1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: installer

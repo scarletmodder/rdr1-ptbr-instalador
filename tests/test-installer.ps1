@@ -12,6 +12,7 @@ $TESTED_URL = 'https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdi
 $TESTED_SHA = '77F141386E5D8F785C1C846E10FBBC19B6C05AA00E3F59CC44670FB3F0E2AE94'
 $GUID = '{4F7C2B91-6A3E-4D58-B1E0-9C2A7D5E8F13}_is1'
 $ENTRY = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$GUID"
+$STATE = 'HKCU:\Software\Scarlet Modder\RDR1-PTBR'
 
 if (-not $Setup) { $Setup = (Get-ChildItem -LiteralPath (Join-Path $root 'dist') -Filter 'Instalador-*.exe' | Select-Object -First 1).FullName }
 if (-not $Setup -or -not (Test-Path -LiteralPath $Setup)) { throw 'Installer not found: run scripts\build.ps1' }
@@ -123,12 +124,14 @@ try {
     Check ((Install $pack2.Folder $g) -eq 0) 'the extracted folder works too'
     Check ((Audio $g) -eq (Sha $dub2)) 'the game has the newer dub'
     Check ((Sha (Backup $g)) -eq (Sha $orig)) 'the backup is still the original'
+    Check (-not (Test-Path -LiteralPath (Join-Path $g 'game\audio_d11generic.rpf.ptbr-velho'))) 'the older dub was cleared'
 
     Write-Host '[4] Uninstall from Windows'
     Check (Uninstall) 'the entry is gone'
     Check ((Audio $g) -eq (Sha $orig)) 'the original audio is back'
     Check (-not (Test-Path -LiteralPath (Join-Path $g 'PTBR-backup'))) 'PTBR-backup is gone'
-    Check (WaitGone (Join-Path $APP 'dublagem.ini')) 'the program folder is clean'
+    Check (WaitGone $STATE) 'the recorded state is gone'
+    Check (-not (Test-Path -LiteralPath (Join-Path $g 'game\audio_d11generic.rpf.ptbr-velho'))) 'no leftover file'
 
     Write-Host '[5] A game file that is neither the original nor the dub'
     $other = Join-Path $work 'other.rpf'; [IO.File]::WriteAllBytes($other, (RandomBytes 3000000))
@@ -159,9 +162,17 @@ try {
     Check ((Audio $g8) -eq (Sha $dub1)) 'and leaves the game file alone'
 
     # Without internet the installer falls back to the official zip in the Downloads folder of this user.
+    # When the zip is not there (as in CI), the test puts it there and takes it away at the end.
+    Write-Host '[9] No internet, the official zip is in Downloads'
     $downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-    if (Test-Path -LiteralPath (Join-Path $downloads (Split-Path $TESTED_URL -Leaf))) {
-        Write-Host '[9] No internet, the official zip is in Downloads'
+    $inDownloads = Join-Path $downloads (Split-Path $TESTED_URL -Leaf)
+    $placed = $false
+    if (-not (Test-Path -LiteralPath $inDownloads)) {
+        New-Item -ItemType Directory -Force -Path $downloads | Out-Null
+        Copy-Item -LiteralPath $HdiffpatchZip -Destination $inDownloads
+        $placed = $true
+    }
+    try {
         $g9 = NewGame 'game9' $orig
         $script:n++
         $log = Join-Path $work "setup-$($script:n).log"
@@ -170,9 +181,38 @@ try {
         [void]$p.WaitForExit(600000)
         Check ($p.ExitCode -eq 0) 'finishes with code 0'
         Check ((Audio $g9) -eq (Sha $dub1)) 'the game has the dubbed audio'
+        Check ((Select-String -LiteralPath $log -Pattern 'zip found in Downloads' -Quiet)) 'it used the zip from Downloads'
         Check (Uninstall) 'uninstalls'
     }
-    else { Write-Host '[9] skipped: the official HDiffPatch zip is not in Downloads' }
+    finally { if ($placed) { Remove-Item -LiteralPath $inDownloads -Force } }
+
+    Write-Host '[10] A run cut in the middle: the audio file is gone, the original waits in PTBR-backup'
+    $g10 = NewGame 'game10' $orig
+    New-Item -ItemType Directory -Path (Join-Path $g10 'PTBR-backup') | Out-Null
+    Move-Item -LiteralPath (Join-Path $g10 'game\audio_d11generic.rpf') -Destination (Backup $g10)
+    Check ((Install $pack1.Zip $g10) -eq 0) 'the installer accepts the folder and finishes'
+    Check ((Audio $g10) -eq (Sha $dub1)) 'the game has the dubbed audio'
+
+    Write-Host '[11] Another game folder is still dubbed'
+    $g11 = NewGame 'game11' $orig
+    Check ((Install $pack1.Zip $g11) -ne 0) 'the installer refuses'
+    Check ((Audio $g11) -eq (Sha $orig)) 'the second game is untouched'
+    Check ((Audio $g10) -eq (Sha $dub1)) 'the first game keeps the dub'
+
+    Write-Host '[12] Uninstall after the store put the original back'
+    Copy-Item -LiteralPath $orig -Destination (Join-Path $g10 'game\audio_d11generic.rpf') -Force
+    Check (Uninstall) 'uninstalls'
+    Check ((Audio $g10) -eq (Sha $orig)) 'the game keeps the original'
+    Check (-not (Test-Path -LiteralPath (Join-Path $g10 'PTBR-backup'))) 'PTBR-backup is gone'
+
+    Write-Host '[13] Uninstall after the store replaced the file with an update'
+    $g13 = NewGame 'game13' $orig
+    Check ((Install $pack1.Zip $g13) -eq 0) 'installed'
+    $update = Join-Path $work 'update.rpf'; [IO.File]::WriteAllBytes($update, (RandomBytes 3000000))
+    Copy-Item -LiteralPath $update -Destination (Join-Path $g13 'game\audio_d11generic.rpf') -Force
+    Check (Uninstall) 'uninstalls'
+    Check ((Audio $g13) -eq (Sha $update)) 'the updated file is kept'
+    Check ((Sha (Backup $g13)) -eq (Sha $orig)) 'the old original stays in PTBR-backup'
 }
 finally {
     if (Test-Path -LiteralPath $ENTRY) { [void](Uninstall) }

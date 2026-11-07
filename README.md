@@ -11,13 +11,13 @@
 [![Plataforma](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-lightgrey?style=flat)](docs/installation.md)
 [![Mod no Nexus](https://img.shields.io/badge/Nexus%20Mods-mod%20855-DA8E35?style=flat)](https://www.nexusmods.com/reddeadredemption/mods/855)
 
-[Como instalar](#-como-instalar) · [Guia completo](docs/installation.md) · [Baixar o instalador](https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/latest) · [Baixar a dublagem no Nexus](https://www.nexusmods.com/reddeadredemption/mods/855?tab=files)
+[Como instalar](#-como-instalar) · [Guia completo](docs/installation.md) · [Baixar o instalador](https://github.com/scarletmodder/rdr1-ptbr-instalador/releases/latest) · [Baixar a dublagem no Nexus](https://www.nexusmods.com/reddeadredemption/mods/855?tab=files) · [Changelog](CHANGELOG.md)
 
 <img alt="Tela de boas-vindas do instalador da dublagem" src="docs/images/installer-1-welcome.png" width="560">
 
 </div>
 
-**Neste documento:** [Como instalar](#-como-instalar) · [Por que existe](#-por-que-existe) · [O que o instalador faz](#%EF%B8%8F-o-que-o-instalador-faz) · [Remover](#%EF%B8%8F-remover-a-dublagem) · [Segurança](#-segurança-e-privacidade) · [Linux e Steam Deck](#-linux-e-steam-deck) · [Estado](#%EF%B8%8F-estado-atual) · [Para quem contribui](#-para-quem-contribui)
+**Neste documento:** [Como instalar](#-como-instalar) · [Requisitos](#-requisitos) · [Por que existe](#-por-que-existe) · [O que o instalador faz](#%EF%B8%8F-o-que-o-instalador-faz) · [Remover](#%EF%B8%8F-remover-a-dublagem) · [Segurança](#-segurança-e-privacidade) · [Linux, Steam Deck e outras formas](#-linux-steam-deck-e-outras-formas-de-instalar) · [Estado](#%EF%B8%8F-estado-atual) · [Para quem contribui](#-para-quem-contribui)
 
 ## 🚀 Como instalar
 
@@ -38,6 +38,14 @@ Os caminhos que aparecem nas capturas são exemplos. Na sua máquina, o instalad
 
 > [!TIP]
 > O passo a passo com os avisos do Windows, a remoção e a lista de problemas está no [guia de instalação](docs/installation.md).
+
+## 📋 Requisitos
+
+- **Windows 10 ou 11, de 64 bits.** Não precisa instalar nada antes: nem .NET, nem Visual C++, nem outro programa. O instalador é autônomo, e o HDiffPatch que ele baixa só usa bibliotecas do próprio Windows ([detalhes](docs/installation.md#precisa-instalar-alguma-coisa-antes)).
+- **Red Dead Redemption de PC** na Steam, na Epic ou no Rockstar Games Launcher, atualizado e sem outro mod de áudio. A versão do Xbox (Microsoft Store) não funciona.
+- **Cerca de 4 GB livres** no disco do jogo e **internet** durante a instalação, para baixar o HDiffPatch.
+
+Linux e Steam Deck usam o [zip de scripts](#-linux-steam-deck-e-outras-formas-de-instalar).
 
 ## 🎯 Por que existe
 
@@ -98,11 +106,19 @@ O original guardado volta para o lugar, depois de conferido pelo hash, e a pasta
 - **Pede administrador** porque altera um arquivo dentro da pasta do jogo, que costuma ser protegida.
 - **Sem assinatura digital.** O Windows pode avisar que o arquivo é desconhecido. Você pode conferir o hash do instalador com o `SHA256SUMS.txt` da release ou compilar pelo código. Veja [como conferir](docs/installation.md#2-conferir-o-arquivo-opcional).
 
-## 🐧 Linux e Steam Deck
+## 🐧 Linux, Steam Deck e outras formas de instalar
 
-O instalador .exe é só para Windows. No Linux e no Steam Deck (Modo Desktop), use o `instalar-linux.sh`, que fica na [página de downloads](https://github.com/scarletmodder/rdr1-ptbr-instalador/releases): extraia o .zip do mod, coloque o script ao lado do `LEIA-ME.txt` e rode `bash instalar-linux.sh` num terminal aberto nessa pasta. Para remover, `bash instalar-linux.sh remover`. O script acha o jogo na Steam nativa, no Flatpak, no cartão SD do Steam Deck e no Heroic.
+O instalador .exe é só para Windows. Cada release traz também o `Instalador-Dublagem-PTBR-RDR1-Scripts-v<versão>.zip`, com os scripts de instalação para os outros casos. Extraia esse zip dentro da pasta do mod, ao lado do `LEIA-ME.txt` e da pasta `dados`, como o LEIA-ME do pacote do Nexus explica:
 
-Os scripts `Instalar dublagem.ps1` e `Remover dublagem.ps1` continuam neste repositório como alternativa para Windows sem o instalador, para quem prefere rodar pelo terminal.
+| Sistema | Como instalar | Como remover |
+|---|---|---|
+| Linux e Steam Deck (Modo Desktop) | Num terminal aberto na pasta do mod: `bash instalar-linux.sh` | `bash instalar-linux.sh remover` |
+| Windows, sem o .exe | Dois cliques em `Instalar dublagem.cmd` | Dois cliques em `Remover dublagem.cmd` |
+
+- No Linux e no Steam Deck, o script acha o jogo na Steam nativa, no Flatpak, no cartão SD do Deck e no Heroic, e não precisa de `sudo`. Ele usa o [HDiffPatch para Linux](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_linux64.zip), que você deixa na pasta Downloads, sem extrair.
+- No Windows, os lançadores `.cmd` rodam os scripts `.ps1` liberando scripts só naquela execução. Não use "Executar com o PowerShell" do menu: no Windows 11, com scripts bloqueados (o padrão), a janela abre e fecha sem fazer nada. Esses scripts usam o [HDiffPatch para Windows](https://github.com/sisong/HDiffPatch/releases/download/v5.1.3/hdiffpatch_v5.1.3_bin_windows64.zip), também deixado em Downloads.
+
+A instalação manual, sem nenhum script, está descrita no `LEIA-ME.txt` do mod e na página do Nexus.
 
 ## 🗺️ Estado atual
 
@@ -111,8 +127,11 @@ Os scripts `Instalar dublagem.ps1` e `Remover dublagem.ps1` continuam neste repo
 | Instalar pelo .zip do Nexus | ✅ pronto | Testes automáticos com jogo sintético, e uma instalação pelas telas com o pacote real da dublagem v1.0 sobre o arquivo de áudio original: hash do resultado igual ao da dublagem |
 | Pasta extraída e versão nova | ✅ pronto | Testes automáticos: aplica a partir da pasta extraída e de uma versão nova sobre o original guardado |
 | Recusar o que não confere | ✅ pronto | Testes automáticos: arquivo do jogo de outra origem, resultado que não bate e pasta que não é do jogo deixam o jogo como estava |
-| Baixar o HDiffPatch | ✅ pronto | Testado baixando do GitHub e, sem internet, com o .zip oficial na pasta Downloads |
-| Remover pela lista do Windows | ✅ pronto | Testes automáticos e uma remoção real, abrindo o desinstalador como o Windows abre: o original voltou com o hash conferido. O clique pela página de Configurações em si não foi gravado |
+| Baixar o HDiffPatch | ✅ pronto | Testado baixando do GitHub (fora do CI) e, sem internet, com o .zip oficial na pasta Downloads (no CI) |
+| Interrupção no meio | ✅ pronto | Teste automático: com o arquivo de áudio sumido e o original em `PTBR-backup`, o instalador reconhece a pasta e termina |
+| Remover pela lista do Windows | ✅ pronto | Testes automáticos, inclusive depois de a loja devolver o original ou atualizar o arquivo, e uma remoção real, abrindo o desinstalador como o Windows abre: o original voltou com o hash conferido. O clique pela página de Configurações em si não foi gravado |
+| Scripts de Windows (`.cmd`) | ✅ pronto | Teste automático pelos lançadores, com scripts bloqueados na sessão: instala e remove |
+| Script de Linux e Steam Deck | ⚠️ só em pastas simuladas | Conferido na versão 0.7.1 em pastas que imitam a Steam, o Flatpak, o cartão SD e o Heroic; não testado com o jogo rodando no Linux |
 | Aviso de administrador e SmartScreen | ⚠️ não capturado | As capturas foram feitas no modo por usuário, sem o aviso de administrador |
 | Antivírus | ⚠️ não medido | Ainda sem medida com o instalador publicado |
 | Epic e Rockstar Games Launcher | ⚠️ só pela busca | A detecção segue os manifestos dessas lojas, mas não foi conferida com o jogo instalado por elas |
@@ -121,8 +140,9 @@ Os scripts `Instalar dublagem.ps1` e `Remover dublagem.ps1` continuam neste repo
 
 | Comando | O que faz |
 |---|---|
-| `scripts\build.ps1` | Compila o instalador com o Inno Setup 6.7 e grava `dist\SHA256SUMS.txt` |
-| `tests\test-installer.ps1` | Instala, atualiza e remove num jogo sintético, em 9 cenários, sem tocar no jogo real |
+| `scripts\build.ps1` | Compila o instalador com o Inno Setup 6.7, monta o zip de scripts e grava `dist\SHA256SUMS.txt` |
+| `tests\test-installer.ps1` | Instala, atualiza, interrompe e remove num jogo sintético, em 13 cenários, sem tocar no jogo real. `-Online` deixa o instalador baixar o HDiffPatch do GitHub |
+| `tests\test-scripts.ps1` | Instala e remove pelos lançadores `.cmd`, com scripts bloqueados na sessão |
 | `scripts\capture-screenshots.ps1` | Refaz as capturas do guia. Recusa caminhos que mostrem o nome de usuário |
 | `python scripts/guard.py --root .` | Barra dado pessoal, segredo e travessão antes de qualquer commit |
 
